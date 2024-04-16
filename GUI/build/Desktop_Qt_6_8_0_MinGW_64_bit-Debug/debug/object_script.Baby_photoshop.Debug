@@ -1,0 +1,14 @@
+debug/bouns.o
+debug/effects_page.o
+debug/elramly_page.o
+debug/filters.o
+debug/main.o
+debug/mainstart.o
+debug/mainwindow.o
+debug/our_team.o
+debug/moc_bouns.o
+debug/moc_effects_page.o
+debug/moc_elramly_page.o
+debug/moc_mainstart.o
+debug/moc_mainwindow.o
+debug/moc_our_team.o
