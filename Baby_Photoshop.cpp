@@ -1,17 +1,22 @@
-// File: CS112_A3_Part2B_S25_20230582_20231233_20230349.cpp
+// File: CS112_A3_Part3_S25_20230582_20231233_20230349.cpp
 // Purpose: This is an image processing (or photo editing) software like PhotoShop allows you to load an image and apply
 //some filters to it and then save it again.
 // Section: S25
 //                           Name                           ID                  Filter                                    Email
-// Author_1:     Kerolos Medhat Malakhy Nakhnokh        (20231233):      (1,4,7,10)+bonus(13,15)                    kerolosm117@gmail.com
-// Author_2:     Yousef Tamer Zaki Mohamed              (20230582):      (2,5,8,11)+bonus(16,18)                    yousef9tamer@gmail.com
-// Author_3:     Mohamed Kamal Ahmed                    (20230349):      (3,6,9,12)+bonus(17)                       elkpir666@gmail.com
-
+// Author_1:     Kerolos Medhat Malakhy Nakhnokh        (20231233):      (1,4,7,10)+bonus(19)                       kerolosm117@gmail.com
+// Author_2:     Yousef Tamer Zaki Mohamed              (20230582):      (2,5,8,11)+bonus(13,16,18,20)              yousef9tamer@gmail.com
+// Author_3:     Mohamed Kamal Ahmed                    (20230349):      (3,6,9,12)+bonus(14,15,17,21)              elkpir666@gmail.com
+//System diagram
+//https://www.mindmeister.com/app/map/3243395418?t=31QgJsP2iE
+//GitHub
+//https://github.com/YousefT234/Baby_Photoshop.git
 #include <iostream>
 using namespace std;
 #include "Image_Class.h"
 #include<string>
 #include<cmath>
+#include <random>
+#include <algorithm>
 void flip(Image& s) {
     // Create a new image object with the same dimensions as the original image
     Image x(s.width, s.height);
@@ -109,6 +114,23 @@ void crop(Image& s) {
 
     // Notify the user that the image has been cropped successfully
     cout << "The image has been cropped successfully" << endl;
+
+    // Update the original image to the cropped image
+    s = v;
+}
+void crop(Image& s,int x,int y, int w,int h) {
+
+    Image v(w, h);
+
+    // Copy pixels from the original image to the cropped image
+    for (int i = x; i < w + x; ++i) {
+        for (int j = y; j < h + y; ++j) {
+            for (int k = 0; k < 3; ++k) {
+                // Adjust the coordinates to fit within the cropped image and copy pixel values
+                v(i - x, j - y, k) = s(i, j, k);
+            }
+        }
+    }
 
     // Update the original image to the cropped image
     s = v;
@@ -374,32 +396,29 @@ void warm(Image& s) {
     cout << "Natural sunlight filter has been done successfully" << endl;
 
 }
-void Noise(Image& image) {
-    // Load the noise image
-    Image image2("noise.jpg");
-
-    // Create an output image with the same dimensions as the original image
-    Image output(image.width, image.height);
-
-    // Resize the noise image to match the dimensions of the original image
-    resizeImage(image2, image.width, image.height);
-
-    // Iterate over each pixel in the original image
+void old_tv(Image& image) {
+    random_device rd;
+    mt19937 gen(rd());
+    uniform_int_distribution<> dis(-25, 25);
+    // Apply noise to each pixel
     for (int i = 0; i < image.width; ++i) {
         for (int j = 0; j < image.height; ++j) {
-            // Iterate over each color channel (R, G, B)
-            for (int k = 0; k < 3; ++k) {
-                // Apply the noise filter by combining original image and noise image
-                output(i, j, k) = static_cast<unsigned char>(
-                    0.9 * image(i, j, k) + 0.1 * image2(i, j, k));
-            }
+            int r = image(i, j, 0);
+            int g = image(i, j, 1);
+            int b = image(i, j, 2);
+
+            int noise = dis(gen);
+            r = clamp(r + noise, 0, 255);
+            g = clamp(g + noise, 0, 255);
+            b = clamp(b + noise, 0, 255);
+
+            image(i, j, 0)=r;
+            image(i, j, 1)=g;
+            image(i, j, 2)=b;
         }
+        cout << "Old TV filter has been applied successfully." << endl;
+
     }
-
-    // Update the original image with the filtered output
-    image = output;
-
-    cout << "Old TV filter has been applied successfully." << endl;
 }
 void purple(Image& s) {
     // Iterate over each pixel in the image
@@ -471,46 +490,42 @@ void skew(Image& s) {
 
     // Calculate skew transformation parameters
     double rad = skewAngle * M_PI / 180.0;
-    double tangent = tan(rad);
-    int newWidth = static_cast<double>(s.width) / (1.0 + 1.0 / tangent);
-    int newHeight = static_cast<double>(s.height) / (1.0 + 1.0 / tangent);
-    Image output(s.width, newHeight);
+    int newWidth = s.width + static_cast<int>(abs(s.height * tan(rad)))/ 2;
+    int newHeight=s.height;
+    Image output(newWidth, newHeight);
 
-    // Fill the output image with a white background
-    for (int i = 0; i < output.width; ++i) {
-        for (int j = 0; j < output.height; ++j) {
-            for (int k = 0; k < 3; ++k) {
-                output(i, j, k) = 255;
-            }
-        }
-    }
 
-    // Calculate the shifting factor for skewing
-    int start = output.width - newWidth;
-    double move = start / static_cast<double>(output.width);
-    resizeImage(s, newWidth, newHeight);
 
-    // Apply the skew transformation
-    for (int i = 0; i < output.width; ++i) {
-        for (int j = 0; j < output.height; j++) {
-            for (int k = 0; k < 3; ++k) {
-                // Calculate the target column index in the output image
-                if (i <= s.width) {
-                    int shiftedColumn = i + static_cast<int>(move * j); // Calculate the shifted column index
-                    if (shiftedColumn >= 0 && shiftedColumn < output.width) { // Check if within bounds
-                        output(shiftedColumn, j, k) = s(i, j, k); // Copy the pixel value to the new position
-                    }
+
+// Apply the skew transformation
+    for (int y = 0; y < newHeight; ++y) {
+        for (int x = 0; x < newWidth; ++x) {
+            // Calculate original coordinates
+            int srcX = x - static_cast<int>((y * tan(rad)) / 2);
+            int srcY = y;
+
+            // Check if the original coordinates are within bounds
+            if (srcX >= 0 && srcX < s.width && srcY >= 0 && srcY < s.height) {
+                // Copy pixel values from the original image to the skewed image
+                for (int c = 0; c < 3; ++c) {
+                    output.setPixel(x, y, c, s.getPixel(srcX, srcY, c));
+                }
+            } else {
+                // Set background pixels to white
+                for (int c = 0; c < 3; ++c) {
+                    output.setPixel(x, y, c, 255); // Assuming white color (255, 255, 255) for simplicity
                 }
             }
         }
     }
 
+    s=output;
     // Reverse the skew transformation
-    Image x(output.width, output.height);
-    for (int i = 0; i < output.width; ++i) {
-        for (int j = 0; j < output.height; ++j) {
+    Image x(s.width, s.height);
+    for (int i = 0; i < s.width; ++i) {
+        for (int j = 0; j < s.height; ++j) {
             for (int k = 0; k < 3; ++k) {
-                x(output.width - 1 - i, j, k) = output(i, j, k);
+                x(s.width - 1 - i, j, k) = output(i, j, k);
             }
         }
     }
@@ -959,8 +974,233 @@ void frame(Image& img) {
 
     cout << "Frame has been added successfully." << endl;
 }
+void Contrast_Decontrast(Image& image) {
+    float factor;
+    float midpoint = 127.5f; // Assuming RGB channels have values in [0, 255]
+    cout << "1-Contrast\n2-Decontrast\n";
+    int choice;
+    cin >> choice;
 
+    // Validate the choice input
+    bool valid = false;
+    while (!valid) {
+        if (choice >= 1 && choice <= 2) {
+            valid = true;
+        }
+        else {
+            cout << "Invalid choice. Please enter 1 or 2: ";
+            cin >> choice;
+        }
+    }
 
+    // Apply the selected operation (Contrast or decontrast)
+    if (choice == 1) {
+        factor = 1.25;
+        // Iterate through each pixel of the image
+        for (int y = 0; y < image.height; ++y) {
+            for (int x = 0; x < image.width; ++x) {
+                // Iterate through each color channel
+                for (int c = 0; c < image.channels; ++c) {
+                    // Retrieve the pixel value
+                    unsigned char &pixelValue = image.getPixel(x, y, c);
+
+                    // Apply contrast adjustment
+                    float newValue = (pixelValue - midpoint) * factor + midpoint;
+
+                    // Clamp the new value to the range [0, 255]
+                    newValue = min(255.0f, max(0.0f, newValue));
+
+                    // Update the pixel value
+                    pixelValue = static_cast<unsigned char>(newValue);
+                }
+            }
+        }
+    }
+    else {
+        factor = .75;
+        // Iterate through each pixel of the image
+        for (int y = 0; y < image.height; ++y) {
+            for (int x = 0; x < image.width; ++x) {
+                // Iterate through each color channel
+                for (int c = 0; c < image.channels; ++c) {
+                    // Retrieve the pixel value
+                    unsigned char &pixelValue = image.getPixel(x, y, c);
+
+                    // Apply contrast adjustment
+                    float newValue = (pixelValue - midpoint) * factor + midpoint;
+
+                    // Clamp the new value to the range [0, 255]
+                    newValue = min(255.0f, max(0.0f, newValue));
+
+                    // Update the pixel value
+                    pixelValue = static_cast<unsigned char>(newValue);
+                }
+            }
+        }
+    }
+
+    cout << "Lighten and darken filter has been applied successfully" << endl;
+}
+void Sepia_tone(Image& image){
+    for (int y = 0; y < image.height; ++y) {
+        for (int x = 0; x < image.width; ++x) {
+            // Get the pixel values directly from the image data
+            unsigned char& pixelR = image.getPixel(x, y, 0);
+            unsigned char& pixelG = image.getPixel(x, y, 1);
+            unsigned char& pixelB = image.getPixel(x, y, 2);
+
+            // Perform the color transformation
+            int newR = static_cast<int>((0.393 * pixelR) + (0.769 * pixelG) + (0.189 * pixelB));
+            int newG = static_cast<int>((0.349 * pixelR) + (0.686 * pixelG) + (0.168 * pixelB));
+            int newB = static_cast<int>((0.272 * pixelR) + (0.534 * pixelG) + (0.131 * pixelB));
+
+            // Clamp RGB values to ensure they are within [0, 255]
+            newR = min(max(newR, 0), 255);
+            newG = min(max(newG, 0), 255);
+            newB = min(max(newB, 0), 255);
+
+            // Update the pixel values in the image data
+            pixelR = static_cast<unsigned char>(newR);
+            pixelG =  static_cast<unsigned char>(newG);
+            pixelB =  static_cast<unsigned char>(newB);
+        }
+    }
+}
+void blur_edges(Image& s) {
+    Image tmp_image = s;
+    int sum_r, sum_g, sum_b, pixels_num;
+    float x = s.width * 0.05f;
+    float y = s.height * 0.05f;
+
+    for (int i = 0; i < s.width; i++) {
+        for (int j = 0; j < s.height; j++) {
+            sum_r = 0, sum_g = 0, sum_b = 0, pixels_num = 1;
+
+            // Check if the pixel is near the edges
+            bool nearEdge = (i < x || i >= s.width - x || j < y || j >= s.height - y);
+
+            if (nearEdge) {
+                // Top left (4 units away)
+                if (i > 3 && j > 3) {
+                    sum_r += tmp_image(i - 4, j - 4, 0);
+                    sum_g += tmp_image(i - 4, j - 4, 1);
+                    sum_b += tmp_image(i - 4, j - 4, 2);
+                    pixels_num++;
+                }
+
+                // Top (4 units away)
+                if (i > 3) {
+                    sum_r += tmp_image(i - 4, j, 0);
+                    sum_g += tmp_image(i - 4, j, 1);
+                    sum_b += tmp_image(i - 4, j, 2);
+                    pixels_num++;
+                }
+
+                // Top right (4 units away)
+                if (i > 3 && j < s.height - 4) {
+                    sum_r += tmp_image(i - 4, j + 4, 0);
+                    sum_g += tmp_image(i - 4, j + 4, 1);
+                    sum_b += tmp_image(i - 4, j + 4, 2);
+                    pixels_num++;
+                }
+
+                // Left (4 units away)
+                if (j > 3) {
+                    sum_r += tmp_image(i, j - 4, 0);
+                    sum_g += tmp_image(i, j - 4, 1);
+                    sum_b += tmp_image(i, j - 4, 2);
+                    pixels_num++;
+                }
+
+                // Right (4 units away)
+                if (j < s.height - 4) {
+                    sum_r += tmp_image(i, j + 4, 0);
+                    sum_g += tmp_image(i, j + 4, 1);
+                    sum_b += tmp_image(i, j + 4, 2);
+                    pixels_num++;
+                }
+
+                // Bottom left (4 units away)
+                if (i < s.width - 4 && j > 3) {
+                    sum_r += tmp_image(i + 4, j - 4, 0);
+                    sum_g += tmp_image(i + 4, j - 4, 1);
+                    sum_b += tmp_image(i + 4, j - 4, 2);
+                    pixels_num++;
+                }
+
+                // Bottom (4 units away)
+                if (i < s.width - 4) {
+                    sum_r += tmp_image(i + 4, j, 0);
+                    sum_g += tmp_image(i + 4, j, 1);
+                    sum_b += tmp_image(i + 4, j, 2);
+                    pixels_num++;
+                }
+
+                // Bottom right (4 units away)
+                if (i < s.width - 4 && j < s.height - 4) {
+                    sum_r += tmp_image(i + 4, j + 4, 0);
+                    sum_g += tmp_image(i + 4, j + 4, 1);
+                    sum_b += tmp_image(i + 4, j + 4, 2);
+                    pixels_num++;
+                }
+
+                // Calculate average and assign to the pixel in the original image
+                s(i, j, 0) = sum_r / pixels_num;
+                s(i, j, 1) = sum_g / pixels_num;
+                s(i, j, 2) = sum_b / pixels_num;
+            }
+        }
+    }
+}
+void oil_paint(Image& img) {
+    int width = img.width;
+    int height = img.height;
+    int radius = 3;
+    float intensity_levels = 5.0f; // Use float for better precision
+    for (int y = radius; y < height - radius; y++) {
+        for (int x = radius; x < width - radius; x++) {
+            vector<int> IntensityCount(intensity_levels, 0);
+            vector<int> nSumR(intensity_levels, 0);
+            vector<int> nSumG(intensity_levels, 0);
+            vector<int> nSumB(intensity_levels, 0);
+            for (int dy = -radius; dy <= radius; dy++) {
+                for (int dx = -radius; dx <= radius; dx++) {
+                    int xx = x + dx;
+                    int yy = y + dy;
+
+                    int r = img(xx, yy, 0);
+                    int g = img(xx, yy, 1);
+                    int b = img(xx, yy, 2);
+
+                    // Calculate intensity level
+                    int Intensity = int((((r + g + b) / 3.0f) * intensity_levels) / 255.0f);
+                    //Intensity = clamp(Intensity, 0, static_cast<int>(intensity_levels) - 1); // Clamp intensity level
+                    int i = Intensity;
+                    IntensityCount[i]++;
+                    nSumR[i] += r;
+                    nSumG[i] += g;
+                    nSumB[i] += b;
+                }
+            }
+            int Max = 0;
+            int maxIndex = 0;
+            for (int i = 0; i < intensity_levels; i++) {
+                if (IntensityCount[i] > Max) {
+                    Max = IntensityCount[i];
+                    maxIndex = i;
+                }
+            }
+            // Calculate average RGB values
+            int avgR = clamp(nSumR[maxIndex] / Max, 0, 255); // Clamp RGB values
+            int avgG = clamp(nSumG[maxIndex] / Max, 0, 255);
+            int avgB = clamp(nSumB[maxIndex] / Max, 0, 255);
+
+            img(x, y, 0) = avgR;
+            img(x, y, 1) = avgG;
+            img(x, y, 2) = avgB;
+        }
+    }
+}
 
 // Main function of the programme
 int main() {
@@ -995,18 +1235,22 @@ int main() {
             << "14- Natural sunlight filter" << endl
             << "15- Old TV filter" << endl
             << "16- Purple filter" << endl
-            << "17- Infrared filter" << endl
-            << "18- Skew filter" << endl
-            << "19- Reset the image" << endl
-            << "20- Save the image" << endl
-            << "21- Exit" << endl;
+            << "17- Oil Painting filter" << endl
+            << "18- Infrared filter" << endl
+            << "19- Skew filter" << endl
+            << "20- Contrast and Decontrast filter" << endl
+            << "21- Sepia tone filter" << endl
+            << "22- Blur edges filter" << endl
+            << "23- Reset the image" << endl
+            << "24- Save the image" << endl
+            << "25- Exit" << endl;
 
         // Prompt user for choice
         string user_choice1;
         cin >> user_choice1;
 
         // Validate user input
-        while (stoi(user_choice1) < 1 or stoi(user_choice1) > 21) {
+        while (stoi(user_choice1) < 1 or stoi(user_choice1) > 25) {
             cout << "Please enter a valid choice" << endl;
             cin >> user_choice1;
         }
@@ -1076,27 +1320,43 @@ int main() {
         }
         else if (user_choice1 == "15") {
             // Apply old tv filter to the image
-            Noise(img);
+            old_tv(img);
         }
         else if (user_choice1 == "16") {
             // Apply purple filter to the image
             purple(img);
         }
         else if (user_choice1 == "17") {
+            // Apply oil_painting filter to the image
+            oil_paint(img);
+        }
+        else if (user_choice1 == "18") {
             // Apply infrared filter to the image
             infrared(img);
         }
-        else if (user_choice1 == "18") {
+        else if (user_choice1 == "19") {
             // Apply skew filter to the image
             skew(img);
         }
-        else if (user_choice1 == "19") {
+        else if (user_choice1 == "20") {
+            // Apply Contrast_Decontrast filter to the image
+            Contrast_Decontrast(img);
+        }
+        else if (user_choice1 == "21") {
+            // Apply Sepia_tone filter to the image
+            Sepia_tone(img);
+        }
+        else if (user_choice1 == "22") {
+            // Apply blur edges filter to the image
+            blur_edges(img);
+        }
+        else if (user_choice1 == "23") {
             // Reset the image to its original state
             Image img3(filename);
             img = img3;
             cout << "The image has been reset successfully" << endl;
         }
-        else if (user_choice1 == "20") {
+        else if (user_choice1 == "24") {
             // Prompt user for saving options
             string user_choice;
             cout << "1-Save changes on the same file\n2-Save changes on new file\n";
